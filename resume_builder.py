@@ -1,5 +1,4 @@
 from docx import Document
-import tempfile
 from formatter import (
     add_heading, add_list_item, add_formatted_paragraph,
     add_horizontal_line, add_subheading_bold, add_subheading_italic,
@@ -13,11 +12,11 @@ def clean_ai(text: str):
     return text.replace("<<start>>", "").replace("<<end>>", "").strip()
 
 
-def build_resume(data):
+def build_resume(data) -> Document:
     doc = Document()
 
     # PERSONAL INFO
-    personal = data["personalInfo"]
+    personal = data.get("personalInfo", {})
     add_heading(doc, personal.get("fullName", ""))
     add_horizontal_line(doc)
     add_contact_info(
@@ -41,11 +40,11 @@ def build_resume(data):
             add_subheading_bold(doc, exp.get("company", ""), dates_combined)
             add_subheading_italic(doc, exp.get("role", ""), exp.get("office", ""))
 
-            add_list_item(doc, clean_ai(exp.get("description", "")))
-            add_list_item(doc, clean_ai(exp.get("responsibility", "")))
-            add_list_item(doc, clean_ai(exp.get("achievements", "")))
-            add_list_item(doc, clean_ai(exp.get("tools", "")))
-            add_list_item(doc, clean_ai(exp.get("projects", "")))
+            # Only add AI fields if they exist and are not empty
+            for key in ["description", "responsibility", "achievements", "tools", "projects"]:
+                value = clean_ai(exp.get(key, ""))
+                if value:
+                    add_list_item(doc, value)
 
     # EDUCATION
     education_history = data.get("educationHistory", [])
@@ -68,10 +67,8 @@ def build_resume(data):
 
     if data.get("technology"):
         add_formatted_paragraph(doc, "Technologies", data["technology"].rstrip(".") + ".")
-
     if data.get("softSkills"):
         add_formatted_paragraph(doc, "Soft Skills", data["softSkills"].rstrip(".") + ".")
-
     if data.get("interest"):
         add_formatted_paragraph(doc, "Interests", data["interest"].rstrip(".") + ".")
 
@@ -90,9 +87,5 @@ def build_resume(data):
             for course in cert.get("courses", []):
                 add_list_item(doc, course)
 
-    # ===== SAVE TO TEMP FILE =====
-    temp = tempfile.NamedTemporaryFile(delete=False, suffix=".docx")
-    output_file = temp.name
-    doc.save(output_file)
-
-    return output_file
+    # Return the Document object directly
+    return doc
