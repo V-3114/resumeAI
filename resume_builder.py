@@ -5,9 +5,15 @@ from formatter import (
     add_contact_info
 )
 
+def clean_ai(text: str):
+    """Remove <<start>> and <<end>> markers if present."""
+    if not text:
+        return ""
+    return text.replace("<<start>>", "").replace("<<end>>", "").strip()
+
+
 def build_resume(data, output_file="resume.docx"):
     doc = Document()
-
 
     # PERSONAL INFO
     personal = data["personalInfo"]
@@ -20,7 +26,6 @@ def build_resume(data, output_file="resume.docx"):
         personal.get("location", "")
     )
 
-
     # WORK EXPERIENCE
     work_experiences = data.get("workExperiences", [])
     if work_experiences:
@@ -28,15 +33,29 @@ def build_resume(data, output_file="resume.docx"):
         add_horizontal_line(doc)
 
         for exp in work_experiences:
-            add_subheading_bold(doc, exp.get("company", ""), exp.get("dates", ""))
+            # Combine join/exit dates
+            join = exp.get("joinDate", "")
+            exit_ = exp.get("exitDate", "")
+            dates_combined = f"{join} — {exit_}" if join or exit_ else ""
+
+            add_subheading_bold(doc, exp.get("company", ""), dates_combined)
             add_subheading_italic(doc, exp.get("role", ""), exp.get("office", ""))
-            add_list_item(doc, exp.get("description", ""))
-            add_list_item(doc, exp.get("responsibility", ""))
 
-            # Achievements is always a list
-            for ach in exp.get("achievement", []):
-                add_list_item(doc, ach)
+            # Clean AI markers
+            description = clean_ai(exp.get("description", ""))
+            add_list_item(doc, description)
 
+            responsibility = clean_ai(exp.get("responsibility", ""))
+            add_list_item(doc, responsibility)
+
+            achievements = clean_ai(exp.get("achievements", ""))
+            add_list_item(doc, achievements)
+
+            tools = clean_ai(exp.get("tools", ""))
+            add_list_item(doc, tools)
+
+            projects = clean_ai(exp.get("projects", ""))
+            add_list_item(doc, projects)
 
     # EDUCATION
     education_history = data.get("educationHistory", [])
@@ -53,31 +72,21 @@ def build_resume(data, output_file="resume.docx"):
             if highlight:
                 add_list_item(doc, f"Highlight: {highlight}")
 
-
     # SKILLS & INTERESTS
     add_heading(doc, "SKILLS & INTERESTS")
     add_horizontal_line(doc)
 
-    # These are STRINGS, so no join required
     technologies = data.get("technology", "")
     if technologies:
-        if not technologies.endswith("."):
-            technologies += "."
-        add_formatted_paragraph(doc, "Technologies", technologies)
+        add_formatted_paragraph(doc, "Technologies", technologies.rstrip(".") + ".")
 
     soft_skills = data.get("softSkills", "")
     if soft_skills:
-        if not soft_skills.endswith("."):
-            soft_skills += "."
-        add_formatted_paragraph(doc, "Soft Skills", soft_skills)
+        add_formatted_paragraph(doc, "Soft Skills", soft_skills.rstrip(".") + ".")
 
     interests = data.get("interest", "")
     if interests:
-        if not interests.endswith("."):
-            interests += "."
-        add_formatted_paragraph(doc, "Interests", interests)
-
-
+        add_formatted_paragraph(doc, "Interests", interests.rstrip(".") + ".")
 
     # CERTIFICATIONS
     certifications = data.get("certifications", [])
@@ -86,16 +95,14 @@ def build_resume(data, output_file="resume.docx"):
         add_horizontal_line(doc)
 
         for cert in certifications:
-            # Certificate name, issuer, and date
             add_subheading_bold(
                 doc,
                 cert.get("title", ""),
                 f"{cert.get('issuer', '')}, {cert.get('date', '')}"
             )
-            # Optional: list of related courses or topics if available
-            for course in cert.get("course", []):
+            # Correct key name: 'courses'
+            for course in cert.get("courses", []):
                 add_list_item(doc, course)
 
-    # SAVE DOC
     doc.save(output_file)
     return output_file

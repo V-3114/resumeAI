@@ -49,6 +49,27 @@ h2 {
     color: white;
 }
 
+.div-btn {
+    display: flex;
+    gap: 10px;          /* space between buttons */
+    width: 100%;
+}
+
+#skip-btn {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 4px;
+    background: lightslategray;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+#skip-btn:hover {
+    background: grey;
+}
+
 #send-btn {
     width: 100%;
     padding: 10px;
@@ -63,6 +84,8 @@ h2 {
 #send-btn:hover {
     background: #218838;
 }
+
+
 
 #response {
     margin-top: 20px;
