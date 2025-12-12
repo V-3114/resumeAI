@@ -1,4 +1,5 @@
 from docx import Document
+import tempfile
 from formatter import (
     add_heading, add_list_item, add_formatted_paragraph,
     add_horizontal_line, add_subheading_bold, add_subheading_italic,
@@ -12,7 +13,7 @@ def clean_ai(text: str):
     return text.replace("<<start>>", "").replace("<<end>>", "").strip()
 
 
-def build_resume(data, output_file="resume.docx"):
+def build_resume(data):
     doc = Document()
 
     # PERSONAL INFO
@@ -33,7 +34,6 @@ def build_resume(data, output_file="resume.docx"):
         add_horizontal_line(doc)
 
         for exp in work_experiences:
-            # Combine join/exit dates
             join = exp.get("joinDate", "")
             exit_ = exp.get("exitDate", "")
             dates_combined = f"{join} — {exit_}" if join or exit_ else ""
@@ -41,21 +41,11 @@ def build_resume(data, output_file="resume.docx"):
             add_subheading_bold(doc, exp.get("company", ""), dates_combined)
             add_subheading_italic(doc, exp.get("role", ""), exp.get("office", ""))
 
-            # Clean AI markers
-            description = clean_ai(exp.get("description", ""))
-            add_list_item(doc, description)
-
-            responsibility = clean_ai(exp.get("responsibility", ""))
-            add_list_item(doc, responsibility)
-
-            achievements = clean_ai(exp.get("achievements", ""))
-            add_list_item(doc, achievements)
-
-            tools = clean_ai(exp.get("tools", ""))
-            add_list_item(doc, tools)
-
-            projects = clean_ai(exp.get("projects", ""))
-            add_list_item(doc, projects)
+            add_list_item(doc, clean_ai(exp.get("description", "")))
+            add_list_item(doc, clean_ai(exp.get("responsibility", "")))
+            add_list_item(doc, clean_ai(exp.get("achievements", "")))
+            add_list_item(doc, clean_ai(exp.get("tools", "")))
+            add_list_item(doc, clean_ai(exp.get("projects", "")))
 
     # EDUCATION
     education_history = data.get("educationHistory", [])
@@ -76,17 +66,14 @@ def build_resume(data, output_file="resume.docx"):
     add_heading(doc, "SKILLS & INTERESTS")
     add_horizontal_line(doc)
 
-    technologies = data.get("technology", "")
-    if technologies:
-        add_formatted_paragraph(doc, "Technologies", technologies.rstrip(".") + ".")
+    if data.get("technology"):
+        add_formatted_paragraph(doc, "Technologies", data["technology"].rstrip(".") + ".")
 
-    soft_skills = data.get("softSkills", "")
-    if soft_skills:
-        add_formatted_paragraph(doc, "Soft Skills", soft_skills.rstrip(".") + ".")
+    if data.get("softSkills"):
+        add_formatted_paragraph(doc, "Soft Skills", data["softSkills"].rstrip(".") + ".")
 
-    interests = data.get("interest", "")
-    if interests:
-        add_formatted_paragraph(doc, "Interests", interests.rstrip(".") + ".")
+    if data.get("interest"):
+        add_formatted_paragraph(doc, "Interests", data["interest"].rstrip(".") + ".")
 
     # CERTIFICATIONS
     certifications = data.get("certifications", [])
@@ -100,9 +87,12 @@ def build_resume(data, output_file="resume.docx"):
                 cert.get("title", ""),
                 f"{cert.get('issuer', '')}, {cert.get('date', '')}"
             )
-            # Correct key name: 'courses'
             for course in cert.get("courses", []):
                 add_list_item(doc, course)
 
+    # ===== SAVE TO TEMP FILE =====
+    temp = tempfile.NamedTemporaryFile(delete=False, suffix=".docx")
+    output_file = temp.name
     doc.save(output_file)
+
     return output_file

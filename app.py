@@ -1,8 +1,14 @@
 import os
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 import requests
 from resume_builder import build_resume
 from dotenv import load_dotenv
+from flask_cors import CORS
+import io
+
+# ===== FLASK APP =====
+app = Flask(__name__)
+CORS(app)
 
 # ===== CONFIG =====
 DEBUG_AI = True  # Set to False to enable real API calls
@@ -25,8 +31,6 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# ===== FLASK APP =====
-app = Flask(__name__)
 
 @app.route("/")
 def home():
@@ -38,25 +42,20 @@ def compile():
     try:
         data = request.json
 
-        print("\n==========================")
-        print("📥 DATA RECEIVED BY /api/compile")
-        print("==========================")
-        print(data)
-        print("==========================\n")
+        document = build_resume(data)  # returns a python-docx Document()
 
-        # Important: This shows what AI-filled fields look like
-        print("🔍 Checking workExperiences ->")
-        print(data.get("workExperiences"))
+        buffer = io.BytesIO()
+        document.save(buffer)
+        buffer.seek(0)
 
-        output_file = build_resume(data)
-
-        print("✅ Resume built successfully:", output_file)
-
-        return jsonify({"success": True, "file": output_file, "message": "Resume Built Successfully"})
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name="resume.docx",
+            mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
 
     except Exception as e:
-        print("❌ ERROR in /api/compile:")
-        print(e)
         return jsonify({"success": False, "error": str(e)})
 
 
@@ -71,21 +70,18 @@ def call_ai():
 
     for f in fields:
         if DEBUG_AI:
-            # Use placeholder if DEBUG, fallback to generic
-            result[f['key']] = DEBUG_PLACEHOLDERS.get(f['key'], f"<<DEBUG_PLACEHOLDER for {f['key']}>>")
-        else:
-            prompt_text = (
-                f"Prompt: {f['prompt']}\n"
-                f"User Input: {f['userInput']}\n"
-                f"Rules: {f['rules']}\n"
-                f"Generate concise response only for this field, with start/end markers."
+            result[f['key']] = DEBUG_PLACEHOLDERS.get(
+                f['key'], f"<<DEBUG_PLACEHOLDER for {f['key']}>>"
             )
-
-            print("\n📝 Sending prompt for key:", f["key"])
-            print(prompt_text)
-
-            # --- Perplexity API call ---
+        else:
             try:
+                prompt_text = (
+                    f"Prompt: {f['prompt']}\n"
+                    f"User Input: {f['userInput']}\n"
+                    f"Rules: {f['rules']}\n"
+                    f"Generate concise response only for this field, with start/end markers."
+                )
+
                 payload = {
                     "model": "sonar",
                     "messages": [{"role": "user", "content": prompt_text}],
@@ -95,14 +91,13 @@ def call_ai():
                 response = requests.post(PPLX_URL, json=payload, headers=HEADERS)
 
                 if response.status_code != 200:
-                    print("❌ API Error:", response.status_code, response.text)
+                    print("❌ API Error:", response.text)
                     result[f['key']] = ""
                     continue
 
                 response_json = response.json()
                 ai_text = response_json["choices"][0]["message"]["content"]
 
-                print("✅ Extracted AI Text:", ai_text)
                 result[f['key']] = ai_text
 
             except Exception as e:

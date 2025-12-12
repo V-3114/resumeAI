@@ -256,14 +256,32 @@ function finalizeCertificateEntry() {
 
 // ===== SEND DATA =====
 function sendToBackend() {
-    const payload={personalInfo, workExperiences, educationHistory, certifications, technology:technologiesStr, softSkills:softSkillsStr, interest:interestsStr};
+    const payload = {
+        personalInfo,
+        workExperiences,
+        educationHistory,
+        certifications,
+        technology: technologiesStr,
+        softSkills: softSkillsStr,
+        interest: interestsStr
+    };
+
     fetch("/api/compile", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify(payload)
-    }).then(res=>res.json())
-    .then(data=>{
-        document.getElementById("response").innerText = "Resume Built Successfully";
-        document.getElementById("prompt-label").innerText = "Resume Built Successfully";
-    }).catch(err=>console.error(err));
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "resume.docx";
+        a.click();
+        window.URL.revokeObjectURL(url);
+
+        document.getElementById("prompt-label").innerText = "Resume downloaded!";
+    })
+    .catch(err => console.error(err));
 }
+
