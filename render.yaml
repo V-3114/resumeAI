@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: resume-builder
+    env: python
+    region: singapore
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app"
+    plan: free
+    envVars:
+      - key: API_KEY
+        sync: false
